@@ -29,7 +29,7 @@
   color: #4CAF50;
 }
 
-/* Ensure tooltip appears above all content */
+
 #currency-converter-tooltip * {
   margin: 0;
   padding: 0;
