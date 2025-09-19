@@ -1,104 +1,84 @@
-// Cache for exchange rates to avoid excessive API calls
-let exchangeRatesCache = {};
-let lastCacheUpdate = 0;
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+class CurrencyConverter {
+  constructor() {
+    this.exchangeRates = {};
+    this.lastUpdate = 0;
+    this.updateInterval = 3600000; // 1 hour
+    this.apiKey = 'YOUR_API_KEY'; // Get free API key from exchangerate-api.com
+  }
 
-// Free API key - you should replace with your own from exchangerate-api.com
-const API_KEY = 'your-api-key-here';
-const API_URL = 'https://api.exchangerate-api.com/v4/latest/';
-
-// Listen for messages from content script
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'convertCurrency') {
-        convertCurrency(request.amount, request.fromCurrency, request.toCurrency)
-            .then(result => sendResponse({success: true, result: result}))
-            .catch(error => sendResponse({success: false, error: error.message}));
-        return true; // Will respond asynchronously
-    }
-});
-
-async function convertCurrency(amount, fromCurrency, toCurrency) {
-    if (fromCurrency === toCurrency) {
-        return {
-            convertedAmount: amount,
-            rate: 1,
-            fromCurrency: fromCurrency,
-            toCurrency: toCurrency
-        };
-    }
-
-    try {
-        const rates = await getExchangeRates(fromCurrency);
-        const rate = rates[toCurrency];
-        
-        if (!rate) {
-            throw new Error(`Conversion rate not available for ${fromCurrency} to ${toCurrency}`);
-        }
-
-        const convertedAmount = amount * rate;
-        
-        return {
-            convertedAmount: convertedAmount,
-            rate: rate,
-            fromCurrency: fromCurrency,
-            toCurrency: toCurrency
-        };
-    } catch (error) {
-        console.error('Currency conversion error:', error);
-        throw error;
-    }
-}
-
-async function getExchangeRates(baseCurrency) {
+  async getExchangeRates() {
     const now = Date.now();
-    const cacheKey = baseCurrency;
-    
-    // Check if we have cached rates that are still fresh
-    if (exchangeRatesCache[cacheKey] && 
-        (now - lastCacheUpdate) < CACHE_DURATION) {
-        return exchangeRatesCache[cacheKey];
+    if (now - this.lastUpdate < this.updateInterval && Object.keys(this.exchangeRates).length > 0) {
+      return this.exchangeRates;
     }
 
     try {
-        // Use free API without key for demo (limited requests)
-        const response = await fetch(`${API_URL}${baseCurrency}`);
-        
-        if (!response.ok) {
-            throw new Error(`API request failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        if (data.error) {
-            throw new Error(data.error);
-        }
-
-        // Cache the rates
-        exchangeRatesCache[cacheKey] = data.rates;
-        lastCacheUpdate = now;
-        
-        return data.rates;
+      // Using a free API - you can replace with your preferred currency API
+      const response = await fetch(`https://api.exchangerate-api.com/v4/latest/USD`);
+      const data = await response.json();
+      
+      this.exchangeRates = {
+        USD: 1,
+        EUR: 1 / data.rates.EUR,
+        GBP: 1 / data.rates.GBP,
+        ZAR: 1 / data.rates.ZAR
+      };
+      
+      this.lastUpdate = now;
+      
+      // Store in Chrome storage for persistence
+      chrome.storage.local.set({ 
+        exchangeRates: this.exchangeRates,
+        lastUpdate: this.lastUpdate 
+      });
+      
+      return this.exchangeRates;
     } catch (error) {
-        // Fallback to cached data if available
-        if (exchangeRatesCache[cacheKey]) {
-            console.warn('Using stale exchange rates due to API error:', error);
-            return exchangeRatesCache[cacheKey];
-        }
-        throw error;
+      console.error('Failed to fetch exchange rates:', error);
+      
+      // Try to load from storage as fallback
+      const stored = await chrome.storage.local.get(['exchangeRates']);
+      return stored.exchangeRates || {
+        USD: 1, EUR: 0.85, GBP: 0.73, ZAR: 18.5 // Fallback rates
+      };
     }
+  }
+
+  convertCurrency(amount, fromCurrency, toCurrency, rates) {
+    if (!rates[fromCurrency] || !rates[toCurrency]) {
+      return null;
+    }
+    
+    // Convert to USD first, then to target currency
+    const usdAmount = amount * rates[fromCurrency];
+    return usdAmount / rates[toCurrency];
+  }
 }
 
-// Clear cache when extension starts
-chrome.runtime.onStartup.addListener(() => {
-    exchangeRatesCache = {};
-    lastCacheUpdate = 0;
-});
+const converter = new CurrencyConverter();
 
-// Handle installation
-chrome.runtime.onInstalled.addListener(() => {
-    // Set default settings
-    chrome.storage.sync.set({
-        targetCurrency: 'USD',
-        enableExtension: true
+// Initialize rates on startup
+converter.getExchangeRates();
+
+// Handle messages from content script
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'convertCurrency') {
+    converter.getExchangeRates().then(rates => {
+      const converted = converter.convertCurrency(
+        request.amount,
+        request.fromCurrency,
+        request.toCurrency,
+        rates
+      );
+      sendResponse({ convertedAmount: converted, rates });
     });
+    return true; // Keep channel open for async response
+  }
+  
+  if (request.action === 'getSettings') {
+    chrome.storage.sync.get(['preferredCurrency'], (result) => {
+      sendResponse({ preferredCurrency: result.preferredCurrency || 'USD' });
+    });
+    return true;
+  }
 });
