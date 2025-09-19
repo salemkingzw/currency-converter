@@ -2,8 +2,8 @@ class CurrencyConverter {
   constructor() {
     this.exchangeRates = {};
     this.lastUpdate = 0;
-    this.updateInterval = 3600000; // 1 hour
-    this.apiKey = 'YOUR_API_KEY'; // Get free API key from exchangerate-api.com
+    this.updateInterval = 3600000; 
+    this.apiKey = 'YOUR_API_KEY'; 
   }
 
   async getExchangeRates() {
@@ -13,7 +13,7 @@ class CurrencyConverter {
     }
 
     try {
-      // Using a free API - you can replace with your preferred currency API
+      
       const response = await fetch(`https://api.exchangerate-api.com/v4/latest/USD`);
       const data = await response.json();
       
@@ -26,7 +26,7 @@ class CurrencyConverter {
       
       this.lastUpdate = now;
       
-      // Store in Chrome storage for persistence
+     
       chrome.storage.local.set({ 
         exchangeRates: this.exchangeRates,
         lastUpdate: this.lastUpdate 
@@ -36,7 +36,7 @@ class CurrencyConverter {
     } catch (error) {
       console.error('Failed to fetch exchange rates:', error);
       
-      // Try to load from storage as fallback
+      
       const stored = await chrome.storage.local.get(['exchangeRates']);
       return stored.exchangeRates || {
         USD: 1, EUR: 0.85, GBP: 0.73, ZAR: 18.5 // Fallback rates
