@@ -1,155 +1,100 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <style>
-        body {
-            width: 300px;
-            padding: 20px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            margin: 0;
-        }
-        
-        h1 {
-            font-size: 18px;
-            margin: 0 0 20px 0;
-            text-align: center;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-        
-        .setting-group {
-            margin-bottom: 15px;
-            background: rgba(255,255,255,0.1);
-            padding: 15px;
-            border-radius: 8px;
-            backdrop-filter: blur(10px);
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            font-size: 14px;
-        }
-        
-        select {
-            width: 100%;
-            padding: 8px;
-            border: none;
-            border-radius: 4px;
-            background: rgba(255,255,255,0.9);
-            color: #333;
-            font-size: 14px;
-        }
-        
-        select:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
-        }
-        
-        .status {
-            text-align: center;
-            margin-top: 15px;
-            padding: 10px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        
-        .status.success {
-            background: rgba(76, 175, 80, 0.3);
-        }
-        
-        .status.error {
-            background: rgba(244, 67, 54, 0.3);
-        }
-        
-        .footer {
-            text-align: center;
-            margin-top: 15px;
-            font-size: 11px;
-            opacity: 0.7;
-        }
-    </style>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 250px;
+      padding: 15px;
+      font-family: Arial, sans-serif;
+      margin: 0;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .header h2 {
+      margin: 0;
+      color: #333;
+      font-size: 18px;
+    }
+    
+    .setting-group {
+      margin-bottom: 15px;
+    }
+    
+    .setting-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #555;
+    }
+    
+    .setting-group select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      background: white;
+    }
+    
+    .status {
+      text-align: center;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+    }
+    
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .info {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 15px;
+      font-size: 12px;
+      color: #6c757d;
+    }
+    
+    .currency-option {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+  </style>
 </head>
 <body>
-    <h1>💱 Currency Converter</h1>
-    
-    <div class="setting-group">
-        <label for="targetCurrency">Convert to:</label>
-        <select id="targetCurrency">
-            <option value="USD">USD - US Dollar</option>
-            <option value="EUR">EUR - Euro</option>
-            <option value="GBP">GBP - British Pound</option>
-            <option value="JPY">JPY - Japanese Yen</option>
-            <option value="CAD">CAD - Canadian Dollar</option>
-            <option value="AUD">AUD - Australian Dollar</option>
-            <option value="CHF">CHF - Swiss Franc</option>
-            <option value="CNY">CNY - Chinese Yuan</option>
-            <option value="INR">INR - Indian Rupee</option>
-            <option value="BTC">BTC - Bitcoin</option>
-        </select>
-    </div>
-    
-    <div class="setting-group">
-        <label for="enableExtension">
-            <input type="checkbox" id="enableExtension" checked> Enable hover conversion
-        </label>
-    </div>
-    
-    <div id="status" class="status"></div>
-    
-    <div class="footer">
-        Hover over currency amounts on any webpage to see conversions
-    </div>
+  <div class="header">
+    <h2>💱 Currency Converter</h2>
+  </div>
+  
+  <div class="setting-group">
+    <label for="preferredCurrency">Preferred Currency:</label>
+    <select id="preferredCurrency">
+      <option value="USD">🇺🇸 US Dollar (USD)</option>
+      <option value="EUR">🇪🇺 Euro (EUR)</option>
+      <option value="GBP">🇬🇧 British Pound (GBP)</option>
+      <option value="ZAR">🇿🇦 South African Rand (ZAR)</option>
+    </select>
+  </div>
+  
+  <div class="status" id="status"></div>
+  
+  <div class="info">
+    <strong>How to use:</strong><br>
+    Simply hover over any price on any website to see it converted to your preferred currency!
+  </div>
 
-    <script>
-        // Load saved settings
-        chrome.storage.sync.get(['targetCurrency', 'enableExtension'], function(result) {
-            document.getElementById('targetCurrency').value = result.targetCurrency || 'USD';
-            document.getElementById('enableExtension').checked = result.enableExtension !== false;
-        });
-
-        // Save settings when changed
-        document.getElementById('targetCurrency').addEventListener('change', function() {
-            const targetCurrency = this.value;
-            chrome.storage.sync.set({targetCurrency: targetCurrency}, function() {
-                showStatus('Settings saved!', 'success');
-                // Notify content script of changes
-                chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                    chrome.tabs.sendMessage(tabs[0].id, {
-                        action: 'settingsChanged',
-                        targetCurrency: targetCurrency
-                    });
-                });
-            });
-        });
-
-        document.getElementById('enableExtension').addEventListener('change', function() {
-            const enabled = this.checked;
-            chrome.storage.sync.set({enableExtension: enabled}, function() {
-                showStatus(enabled ? 'Extension enabled!' : 'Extension disabled!', 'success');
-                // Notify content script
-                chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                    chrome.tabs.sendMessage(tabs[0].id, {
-                        action: 'toggleExtension',
-                        enabled: enabled
-                    });
-                });
-            });
-        });
-
-        function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = `status ${type}`;
-            setTimeout(() => {
-                status.textContent = '';
-                status.className = 'status';
-            }, 2000);
-        }
-    </script>
+  <script src="popup.js"></script>
 </body>
 </html>
