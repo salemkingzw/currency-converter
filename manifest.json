@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Currency converter by SalemKING",
-  "version": "1.0",
+  "version": "1.0.0",
   "description": "Hover over any price to convert it to your preferred currency. Currently supporting USD, EUR, GBP, and ZAR.",
   "permissions": [
     "activeTab",
