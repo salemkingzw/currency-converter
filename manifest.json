@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Currency Converter",
+  "name": "Universal Currency Converter",
   "version": "1.0",
-  "description": "Convert currencies by hovering over them on any webpage",
+  "description": "Hover over any price to convert it to your preferred currency",
   "permissions": [
     "activeTab",
     "storage"
