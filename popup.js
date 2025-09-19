@@ -1,31 +1,42 @@
-const currencies = [
-  'USD','EUR','GBP','JPY','INR','ZAR','CAD','AUD','CHF','CNY','HKD','SGD','BRL','RUB','KRW','MXN','IDR','TRY','SAR','AED','BTC'
-];
-
-function populate() {
-  const sel = document.getElementById('targetCurrency');
-  currencies.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c;
-    opt.textContent = c;
-    sel.appendChild(opt);
+document.addEventListener('DOMContentLoaded', function() {
+  const preferredCurrencySelect = document.getElementById('preferredCurrency');
+  const status = document.getElementById('status');
+  
+  // Load current settings
+  chrome.storage.sync.get(['preferredCurrency'], function(result) {
+    preferredCurrencySelect.value = result.preferredCurrency || 'USD';
   });
-
-  // load stored
-  chrome.storage.sync.get({targetCurrency: 'USD', precision: 2}, (cfg) => {
-    sel.value = cfg.targetCurrency || 'USD';
-    document.getElementById('precision').value = cfg.precision || 2;
-  });
-
-  document.getElementById('saveBtn').addEventListener('click', () => {
-    const targetCurrency = document.getElementById('targetCurrency').value;
-    const precision = parseInt(document.getElementById('precision').value) || 2;
-    chrome.storage.sync.set({targetCurrency, precision}, () => {
-      // give quick feedback
-      document.getElementById('saveBtn').textContent = 'Saved ✓';
-      setTimeout(() => document.getElementById('saveBtn').textContent = 'Save', 900);
+  
+  // Save settings when changed
+  preferredCurrencySelect.addEventListener('change', function() {
+    const selectedCurrency = preferredCurrencySelect.value;
+    
+    chrome.storage.sync.set({
+      preferredCurrency: selectedCurrency
+    }, function() {
+      showStatus('Settings saved!', 'success');
+      
+      // Notify all tabs to reload settings
+      chrome.tabs.query({}, function(tabs) {
+        tabs.forEach(tab => {
+          chrome.tabs.sendMessage(tab.id, {
+            action: 'settingsChanged',
+            preferredCurrency: selectedCurrency
+          }).catch(() => {
+            // Ignore errors for tabs that don't have content script
+          });
+        });
+      });
     });
   });
-}
-
-document.addEventListener('DOMContentLoaded', populate);
+  
+  function showStatus(message, type) {
+    status.textContent = message;
+    status.className = `status ${type}`;
+    status.style.display = 'block';
+    
+    setTimeout(() => {
+      status.style.display = 'none';
+    }, 2000);
+  }
+});
